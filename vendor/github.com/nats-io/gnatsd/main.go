@@ -38,6 +38,7 @@ Authorization Options:
         --user <user>                User required for connections
         --pass <password>            Password required for connections
         --auth <token>               Authorization token required for connections
+				--jwt_secret <secret>        Secret used to validate JWT tokens
 
 TLS Options:
         --tls                        Enable TLS, do not verify clients (default: false)
@@ -90,6 +91,7 @@ func main() {
 	flag.StringVar(&opts.Username, "user", "", "Username required for connection.")
 	flag.StringVar(&opts.Password, "pass", "", "Password required for connection.")
 	flag.StringVar(&opts.Authorization, "auth", "", "Authorization token required for connection.")
+	flag.StringVar(&opts.JwtSecret, "jwt_secret", "", "Secret used to validate JWT tokens.")
 	flag.IntVar(&opts.HTTPPort, "m", 0, "HTTP Port for /varz, /connz endpoints.")
 	flag.IntVar(&opts.HTTPPort, "http_port", 0, "HTTP Port for /varz, /connz endpoints.")
 	flag.IntVar(&opts.HTTPSPort, "ms", 0, "HTTPS Port for /varz, /connz endpoints.")
@@ -119,7 +121,9 @@ func main() {
 	flag.StringVar(&opts.TLSKey, "tlskey", "", "Private key for server certificate.")
 	flag.StringVar(&opts.TLSCaCert, "tlscacert", "", "Client certificate CA for verification.")
 
-	flag.Usage = usage
+	flag.Usage = func() {
+		fmt.Printf("%s\n", usageStr)
+	}
 
 	flag.Parse()
 
@@ -203,6 +207,11 @@ func configureAuth(s *server.Server, opts *server.Options) {
 			Token: opts.Authorization,
 		}
 		s.SetClientAuthMethod(auth)
+	} else if opts.JwtSecret != "" {
+		auth := &auth.JWTAuth{
+			Secret: opts.JwtSecret,
+		}
+		s.SetClientAuthMethod(auth)
 	}
 	// Routes
 	if opts.Cluster.Username != "" {
@@ -278,6 +287,9 @@ func configureClusterOpts(opts *server.Options) error {
 	// If cluster flag override, process it
 	if opts.Cluster.ListenStr != "" {
 		clusterURL, err := url.Parse(opts.Cluster.ListenStr)
+		if err != nil {
+			return err
+		}
 		h, p, err := net.SplitHostPort(clusterURL.Host)
 		if err != nil {
 			return err

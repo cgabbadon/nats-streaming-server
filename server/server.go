@@ -1062,6 +1062,9 @@ func (s *StanServer) configureNATSServerAuth(opts *server.Options) server.Auth {
 	if opts.Authorization != "" {
 		a = &auth.Token{Token: opts.Authorization}
 	}
+	if opts.JwtSecret != "" {
+		a = &auth.JWTAuth{Secret: opts.JwtSecret}
+	}
 	if opts.Username != "" {
 		a = &auth.Plain{Username: opts.Username, Password: opts.Password}
 	}
